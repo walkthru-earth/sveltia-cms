@@ -1,0 +1,39 @@
+# Sveltia CMS Configuration - DuckDB Lakehouse Backend
+backend:
+  name: duckdb
+  storage_type: parquet
+  storage:
+    provider: s3
+    bucket: overture-egypt
+    region: us-west-2
+    data_path: cms/data/
+  credential_proxy: https://walkthru-cn-auth-worker.walkthru-earth.workers.dev
+  asset_mode: inline
+  oauth_provider: github
+
+# Site Configuration
+site_url: http://localhost:5173
+
+# Media Configuration
+media_folder: assets
+public_folder: /assets
+
+# Collections
+collections:
+  - name: posts
+    label: Blog Posts
+    label_singular: Post
+    folder: content/posts
+    create: true
+    slug: '{{slug}}'
+    fields:
+      - label: Title
+        name: title
+        widget: string
+        required: true
+      - label: Publish Date
+        name: date
+        widget: datetime
+      - label: Body
+        name: body
+        widget: markdown
