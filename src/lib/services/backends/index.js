@@ -1,5 +1,6 @@
 import { derived, writable } from 'svelte/store';
 
+import duckdb from '$lib/services/backends/duckdb';
 import local from '$lib/services/backends/fs/local';
 import test from '$lib/services/backends/fs/test';
 import gitea from '$lib/services/backends/git/gitea';
@@ -22,6 +23,7 @@ export const allBackendServices = {
   github,
   gitlab,
   gitea,
+  duckdb,
   local,
   'test-repo': test,
 };

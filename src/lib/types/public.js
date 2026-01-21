@@ -1274,7 +1274,7 @@
 
 /**
  * Supported backend name.
- * @typedef {GitBackendName | 'test-repo'} BackendName
+ * @typedef {GitBackendName | 'duckdb' | 'test-repo'} BackendName
  */
 
 /**
