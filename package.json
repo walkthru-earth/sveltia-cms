@@ -33,6 +33,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@duckdb/duckdb-wasm": "1.33.1-dev18.0",
     "@jsquash/webp": "^1.5.0",
     "@lexical/markdown": "^0.39.0",
     "@sindresorhus/transliterate": "^2.3.1",
