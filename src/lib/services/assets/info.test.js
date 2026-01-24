@@ -3,8 +3,12 @@
 import { get } from 'svelte/store';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import * as cloudStorageModule from '$lib/services/integrations/media-libraries/cloud';
+import * as cloudinaryModule from '$lib/services/integrations/media-libraries/cloud/cloudinary';
+
 import {
   defaultAssetDetails,
+  getAssetBaseURL,
   getAssetBlob,
   getAssetBlobURL,
   getAssetDetails,
@@ -43,6 +47,7 @@ vi.mock('svelte-i18n', () => ({
 }));
 vi.mock('$lib/services/assets', () => ({
   getAssetByPath: vi.fn(),
+  isRelativePath: vi.fn((path) => !/^[/@]/.test(path)),
   focusedAsset: {
     set: vi.fn(),
     subscribe: vi.fn(),
@@ -79,6 +84,16 @@ vi.mock('$lib/services/utils/file');
 vi.mock('$lib/services/utils/media');
 vi.mock('$lib/services/utils/media/image/transform');
 vi.mock('$lib/services/utils/media/pdf');
+vi.mock('$lib/services/integrations/media-libraries/cloud', () => ({
+  allCloudStorageServices: {
+    cloudinary: {
+      isEnabled: vi.fn(),
+    },
+  },
+}));
+vi.mock('$lib/services/integrations/media-libraries/cloud/cloudinary', () => ({
+  getMergedLibraryOptions: vi.fn(),
+}));
 
 describe('assets/info', () => {
   /** @type {any} */
@@ -725,6 +740,200 @@ describe('assets/info', () => {
 
       expect(result).toBe('blob:mock-url');
     });
+
+    it('should use Cloudinary base URL for relative paths when fieldConfig is provided', async () => {
+      // @ts-ignore
+      vi.mocked(cloudStorageModule.allCloudStorageServices.cloudinary.isEnabled).mockReturnValue(
+        true,
+      );
+      vi.mocked(cloudinaryModule.getMergedLibraryOptions).mockReturnValue({
+        output_filename_only: true,
+        config: {
+          cloud_name: 'my-cloud',
+        },
+      });
+
+      const fieldConfig = /** @type {any} */ ({ type: 'image' });
+      const relativeImagePath = 'my-image.jpg';
+
+      const result = await getMediaFieldURL({
+        value: relativeImagePath,
+        collectionName: 'posts',
+        fieldConfig,
+      });
+
+      expect(result).toBe('https://res.cloudinary.com/my-cloud/my-image.jpg');
+    });
+
+    it('should call getAssetBaseURL with the provided fieldConfig', async () => {
+      // @ts-ignore
+      vi.mocked(cloudStorageModule.allCloudStorageServices.cloudinary.isEnabled).mockReturnValue(
+        true,
+      );
+      vi.mocked(cloudinaryModule.getMergedLibraryOptions).mockReturnValue({
+        output_filename_only: true,
+        config: {
+          cloud_name: 'test-cloud',
+        },
+      });
+
+      const fieldConfig = /** @type {any} */ ({ type: 'image', options: { width: 400 } });
+      const relativeImagePath = 'photo.png';
+
+      await getMediaFieldURL({
+        value: relativeImagePath,
+        collectionName: 'posts',
+        fieldConfig,
+      });
+
+      expect(vi.mocked(cloudinaryModule.getMergedLibraryOptions)).toHaveBeenCalledWith(fieldConfig);
+    });
+
+    it('should not use Cloudinary URL for absolute paths starting with /', async () => {
+      // @ts-ignore
+      vi.mocked(cloudStorageModule.allCloudStorageServices.cloudinary.isEnabled).mockReturnValue(
+        true,
+      );
+      vi.mocked(cloudinaryModule.getMergedLibraryOptions).mockReturnValue({
+        output_filename_only: true,
+        config: {
+          cloud_name: 'my-cloud',
+        },
+      });
+
+      const { getAssetByPath } = await import('$lib/services/assets');
+
+      // Set up asset with blobURL to avoid blob retrieval
+      const assetWithBlobURL = {
+        ...mockAsset,
+        blobURL: 'blob:existing-url',
+      };
+
+      vi.mocked(getAssetByPath).mockReturnValue(assetWithBlobURL);
+
+      const fieldConfig = /** @type {any} */ ({ type: 'image' });
+      const absolutePath = '/assets/image.jpg';
+
+      const result = await getMediaFieldURL({
+        value: absolutePath,
+        collectionName: 'posts',
+        fieldConfig,
+      });
+
+      expect(result).toBe('blob:existing-url');
+      // getAssetByPath should be called instead of using Cloudinary URL
+      expect(vi.mocked(getAssetByPath)).toHaveBeenCalled();
+    });
+
+    it('should fall back to asset lookup when no Cloudinary URL is available', async () => {
+      // @ts-ignore
+      vi.mocked(cloudStorageModule.allCloudStorageServices.cloudinary.isEnabled).mockReturnValue(
+        false,
+      );
+
+      const { getAssetByPath } = await import('$lib/services/assets');
+
+      // Set up asset with blobURL to avoid blob retrieval
+      const assetWithBlobURL = {
+        ...mockAsset,
+        blobURL: 'blob:existing-url',
+      };
+
+      vi.mocked(getAssetByPath).mockReturnValue(assetWithBlobURL);
+
+      const fieldConfig = /** @type {any} */ ({ type: 'image' });
+      const relativeImagePath = 'my-image.jpg';
+
+      const result = await getMediaFieldURL({
+        value: relativeImagePath,
+        collectionName: 'posts',
+        fieldConfig,
+      });
+
+      expect(result).toBe('blob:existing-url');
+      expect(vi.mocked(getAssetByPath)).toHaveBeenCalledWith({
+        value: relativeImagePath,
+        entry: undefined,
+        collectionName: 'posts',
+        fileName: undefined,
+      });
+    });
+
+    it('should treat paths starting with @ as absolute paths', async () => {
+      // @ts-ignore
+      vi.mocked(cloudStorageModule.allCloudStorageServices.cloudinary.isEnabled).mockReturnValue(
+        true,
+      );
+      vi.mocked(cloudinaryModule.getMergedLibraryOptions).mockReturnValue({
+        output_filename_only: true,
+        config: {
+          cloud_name: 'my-cloud',
+        },
+      });
+
+      const { getAssetByPath } = await import('$lib/services/assets');
+
+      // Set up asset with blobURL to avoid blob retrieval
+      const assetWithBlobURL = {
+        ...mockAsset,
+        blobURL: 'blob:existing-url',
+      };
+
+      vi.mocked(getAssetByPath).mockReturnValue(assetWithBlobURL);
+
+      const fieldConfig = /** @type {any} */ ({ type: 'image' });
+      const aliasPath = '@assets/images/image.jpg';
+
+      const result = await getMediaFieldURL({
+        value: aliasPath,
+        collectionName: 'posts',
+        fieldConfig,
+      });
+
+      expect(result).toBe('blob:existing-url');
+      // getAssetByPath should be called, not Cloudinary URL
+      expect(vi.mocked(getAssetByPath)).toHaveBeenCalledWith({
+        value: aliasPath,
+        entry: undefined,
+        collectionName: 'posts',
+        fileName: undefined,
+      });
+    });
+
+    it('should not use Cloudinary URL for paths starting with @media', async () => {
+      // @ts-ignore
+      vi.mocked(cloudStorageModule.allCloudStorageServices.cloudinary.isEnabled).mockReturnValue(
+        true,
+      );
+      vi.mocked(cloudinaryModule.getMergedLibraryOptions).mockReturnValue({
+        output_filename_only: true,
+        config: {
+          cloud_name: 'my-cloud',
+        },
+      });
+
+      const { getAssetByPath } = await import('$lib/services/assets');
+
+      // Set up asset with blobURL to avoid blob retrieval
+      const assetWithBlobURL = {
+        ...mockAsset,
+        blobURL: 'blob:existing-url',
+      };
+
+      vi.mocked(getAssetByPath).mockReturnValue(assetWithBlobURL);
+
+      const fieldConfig = /** @type {any} */ ({ type: 'image' });
+      const aliasPath = '@media/uploads/photo.jpg';
+
+      const result = await getMediaFieldURL({
+        value: aliasPath,
+        collectionName: 'posts',
+        fieldConfig,
+      });
+
+      expect(result).toBe('blob:existing-url');
+      expect(vi.mocked(getAssetByPath)).toHaveBeenCalled();
+    });
   });
 
   describe('getAssetDetails', () => {
@@ -929,6 +1138,12 @@ describe('assets/info', () => {
     it('should return undefined blobURL when getAssetBlob returns without setting blobURL', async () => {
       const { getAssetByPath } = await import('$lib/services/assets');
 
+      // Disable Cloudinary to test asset blob retrieval
+      // @ts-ignore
+      vi.mocked(cloudStorageModule.allCloudStorageServices.cloudinary.isEnabled).mockReturnValue(
+        false,
+      );
+
       // Create an asset that would fail blobURL generation
       const assetWithNoBlob = {
         ...mockAsset,
@@ -1103,6 +1318,12 @@ describe('assets/info', () => {
     it('should return thumbnail or fallback to public URL', async () => {
       const { getAssetByPath } = await import('$lib/services/assets');
       const { transformImage } = await import('$lib/services/utils/media/image/transform');
+
+      // Disable Cloudinary to test thumbnail generation for relative paths
+      // @ts-ignore
+      vi.mocked(cloudStorageModule.allCloudStorageServices.cloudinary.isEnabled).mockReturnValue(
+        false,
+      );
 
       const mockHandle = {
         getFile: vi.fn(async () => new File(['content'], 'test.jpg', { type: 'image/jpeg' })),
@@ -1556,6 +1777,142 @@ describe('assets/info', () => {
       });
 
       expect(dataResult).toBe(dataUrl);
+    });
+  });
+
+  describe('getAssetBaseURL', () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
+
+    it('should return Cloudinary base URL when Cloudinary is enabled with valid config', () => {
+      // @ts-ignore
+      vi.mocked(cloudStorageModule.allCloudStorageServices.cloudinary.isEnabled).mockReturnValue(
+        true,
+      );
+      vi.mocked(cloudinaryModule.getMergedLibraryOptions).mockReturnValue({
+        output_filename_only: true,
+        config: {
+          cloud_name: 'my-cloud',
+        },
+      });
+
+      const fieldConfig = /** @type {any} */ ({ type: 'image' });
+      const result = getAssetBaseURL(fieldConfig);
+
+      expect(result).toBe('https://res.cloudinary.com/my-cloud');
+    });
+
+    it('should return undefined when Cloudinary is not enabled', () => {
+      // @ts-ignore
+      vi.mocked(cloudStorageModule.allCloudStorageServices.cloudinary.isEnabled).mockReturnValue(
+        false,
+      );
+
+      const fieldConfig = /** @type {any} */ ({ type: 'image' });
+      const result = getAssetBaseURL(fieldConfig);
+
+      expect(result).toBeUndefined();
+    });
+
+    it('should return undefined when output_filename_only is false', () => {
+      // @ts-ignore
+      vi.mocked(cloudStorageModule.allCloudStorageServices.cloudinary.isEnabled).mockReturnValue(
+        true,
+      );
+      vi.mocked(cloudinaryModule.getMergedLibraryOptions).mockReturnValue({
+        output_filename_only: false,
+        config: {
+          cloud_name: 'my-cloud',
+        },
+      });
+
+      const fieldConfig = /** @type {any} */ ({ type: 'image' });
+      const result = getAssetBaseURL(fieldConfig);
+
+      expect(result).toBeUndefined();
+    });
+
+    it('should return undefined when cloud_name is missing', () => {
+      // @ts-ignore
+      vi.mocked(cloudStorageModule.allCloudStorageServices.cloudinary.isEnabled).mockReturnValue(
+        true,
+      );
+      vi.mocked(cloudinaryModule.getMergedLibraryOptions).mockReturnValue({
+        output_filename_only: true,
+        config: {},
+      });
+
+      const fieldConfig = /** @type {any} */ ({ type: 'image' });
+      const result = getAssetBaseURL(fieldConfig);
+
+      expect(result).toBeUndefined();
+    });
+
+    it('should return undefined when config is missing', () => {
+      // @ts-ignore
+      vi.mocked(cloudStorageModule.allCloudStorageServices.cloudinary.isEnabled).mockReturnValue(
+        true,
+      );
+      vi.mocked(cloudinaryModule.getMergedLibraryOptions).mockReturnValue({
+        output_filename_only: true,
+      });
+
+      const fieldConfig = /** @type {any} */ ({ type: 'image' });
+      const result = getAssetBaseURL(fieldConfig);
+
+      expect(result).toBeUndefined();
+    });
+
+    it('should handle undefined fieldConfig', () => {
+      // @ts-ignore
+      vi.mocked(cloudStorageModule.allCloudStorageServices.cloudinary.isEnabled).mockReturnValue(
+        true,
+      );
+      vi.mocked(cloudinaryModule.getMergedLibraryOptions).mockReturnValue({
+        output_filename_only: true,
+        config: {
+          cloud_name: 'test-cloud',
+        },
+      });
+
+      const result = getAssetBaseURL(undefined);
+
+      expect(result).toBe('https://res.cloudinary.com/test-cloud');
+    });
+
+    it('should return undefined when Cloudinary service is null or undefined', () => {
+      // @ts-ignore - Testing edge case where cloudinary is undefined
+      const originalCloudinary = cloudStorageModule.allCloudStorageServices.cloudinary;
+
+      // @ts-ignore
+      cloudStorageModule.allCloudStorageServices.cloudinary = undefined;
+
+      const result = getAssetBaseURL(/** @type {any} */ ({ type: 'image' }));
+
+      expect(result).toBeUndefined();
+
+      // Restore for other tests
+      cloudStorageModule.allCloudStorageServices.cloudinary = originalCloudinary;
+    });
+
+    it('should pass fieldConfig to getMergedLibraryOptions', () => {
+      // @ts-ignore
+      vi.mocked(cloudStorageModule.allCloudStorageServices.cloudinary.isEnabled).mockReturnValue(
+        true,
+      );
+      vi.mocked(cloudinaryModule.getMergedLibraryOptions).mockReturnValue({
+        output_filename_only: true,
+        config: {
+          cloud_name: 'test-cloud',
+        },
+      });
+
+      const fieldConfig = /** @type {any} */ ({ type: 'image', options: { width: 200 } });
+
+      getAssetBaseURL(fieldConfig);
+
+      expect(vi.mocked(cloudinaryModule.getMergedLibraryOptions)).toHaveBeenCalledWith(fieldConfig);
     });
   });
 });

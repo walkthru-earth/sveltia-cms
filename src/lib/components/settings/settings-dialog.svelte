@@ -92,7 +92,7 @@
           margin-top: 0;
         }
 
-        h4 {
+        h3 {
           font-size: inherit;
 
           & ~ div {
@@ -104,6 +104,11 @@
             color: var(--sui-secondary-foreground-color);
             font-size: var(--sui-font-size-small);
           }
+        }
+
+        h4 {
+          margin-bottom: 4px;
+          font-size: var(--sui-font-size-small);
         }
       }
     }
