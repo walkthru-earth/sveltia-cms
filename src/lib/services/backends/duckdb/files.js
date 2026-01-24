@@ -57,34 +57,53 @@ function getDataPaths() {
 /**
  * Build a public S3 URL for reading from a public bucket.
  * This avoids presigned URL issues with HEAD requests.
+ * Adds cache-busting parameter to avoid stale browser cache.
  * @param {string} path File path within the bucket.
+ * @param {boolean} [cacheBust=false] Whether to add cache-busting parameter.
  * @returns {string} Public S3 URL.
  */
-function getPublicS3Url(path) {
+function getPublicS3Url(path, cacheBust = false) {
   const { bucket, storageProvider } = repository;
+
+  let baseUrl;
 
   // Build the public URL based on provider
   if (storageProvider === 'r2') {
     // R2 public URLs use a different format (requires public bucket or custom domain)
-    return `https://${bucket}.r2.cloudflarestorage.com/${path}`;
+    baseUrl = `https://${bucket}.r2.cloudflarestorage.com/${path}`;
+  } else {
+    // Default S3 virtual-hosted style URL
+    baseUrl = `https://${bucket}.s3.amazonaws.com/${path}`;
   }
 
-  // Default S3 virtual-hosted style URL
-  return `https://${bucket}.s3.amazonaws.com/${path}`;
+  // Add cache-busting parameter if requested
+  if (cacheBust) {
+    const separator = baseUrl.includes('?') ? '&' : '?';
+
+    return `${baseUrl}${separator}_cb=${Date.now()}`;
+  }
+
+  return baseUrl;
 }
 
 /**
  * Check if a Parquet file exists by making a HEAD request to the public URL.
+ * Uses cache-busting to avoid stale browser cache responses.
  * @param {string} path File path to check.
  * @returns {Promise<boolean>} True if the file exists.
  */
 async function fileExists(path) {
   try {
-    const url = getPublicS3Url(path);
+    // Use cache-busting to avoid stale cache responses
+    const url = getPublicS3Url(path, true);
 
     debugLog(`Checking if file exists: ${url}`);
 
-    const response = await fetch(url, { method: 'HEAD' });
+    const response = await fetch(url, {
+      method: 'HEAD',
+      // Disable browser cache for this check
+      cache: 'no-store',
+    });
 
     return response.ok;
   } catch (error) {
@@ -116,7 +135,8 @@ async function loadEntries(conn, entriesPath) {
 
     // Use public URL for reading (presigned URLs have HEAD request issues with DuckDB WASM)
     // The bucket is public for reads, so we don't need presigned URLs
-    const publicUrl = getPublicS3Url(entriesPath);
+    // Add cache-busting to avoid stale browser cache after commits
+    const publicUrl = getPublicS3Url(entriesPath, true);
 
     debugLog('Loading entries from public URL:', publicUrl);
 
@@ -154,7 +174,8 @@ async function loadAssets(conn, assetsPath) {
 
     // Use public URL for reading (presigned URLs have HEAD request issues with DuckDB WASM)
     // The bucket is public for reads, so we don't need presigned URLs
-    const publicUrl = getPublicS3Url(assetsPath);
+    // Add cache-busting to avoid stale browser cache after commits
+    const publicUrl = getPublicS3Url(assetsPath, true);
 
     debugLog('Loading assets from public URL:', publicUrl);
 

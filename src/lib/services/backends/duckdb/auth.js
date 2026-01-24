@@ -11,6 +11,8 @@ import {
   clearCredentials,
   configureProxy,
   exchangeToken,
+  isSessionExpiringSoon,
+  isSessionValid,
   setSessionToken,
 } from '$lib/services/backends/duckdb/credentials';
 import { closeDuckDB, initDuckDB } from '$lib/services/backends/duckdb/init';
@@ -207,8 +209,8 @@ export const signIn = async (options) => {
 
     debugLog('Token exchange successful, session expires in:', expiresIn);
 
-    // Store session token
-    setSessionToken(sessionToken);
+    // Store session token with expiry tracking
+    setSessionToken(sessionToken, expiresIn);
 
     // Configure credential proxy for presigned URL requests
     const { storageProvider } = repository;
@@ -283,4 +285,81 @@ export const signOut = async () => {
       `Error during sign-out: ${error instanceof Error ? error.message : String(error)}`,
     );
   }
+};
+
+/**
+ * Refresh the session by re-authenticating via OAuth.
+ * This is called when the session is expired or expiring soon.
+ * Unlike signIn, this doesn't reinitialize DuckDB (already running).
+ * @returns {Promise<boolean>} True if refresh succeeded, false if user cancelled.
+ * @throws {Error} When refresh fails due to an error (not user cancellation).
+ */
+export const refreshSession = async () => {
+  debugLog('Starting session refresh...');
+
+  try {
+    const { credentialProxy, storageProvider } = repository;
+
+    if (!credentialProxy) {
+      throw new Error('Credential proxy URL not configured');
+    }
+
+    const oauthProvider = getOAuthProvider();
+
+    debugLog(`Refreshing session via ${oauthProvider} OAuth...`);
+
+    // Perform OAuth authentication
+    const result = await performOAuth(credentialProxy, oauthProvider);
+
+    if (!result?.token) {
+      debugLog('Session refresh cancelled by user');
+
+      return false;
+    }
+
+    const { token: oauthToken } = result;
+
+    // Exchange for new session token
+    const { sessionToken, expiresIn } = await exchangeToken({
+      oauthToken,
+      provider: oauthProvider,
+      proxyURL: credentialProxy,
+    });
+
+    // Update session token with new expiry
+    setSessionToken(sessionToken, expiresIn);
+
+    // Reconfigure proxy (in case it was cleared)
+    configureProxy({
+      proxyUrl: credentialProxy,
+      provider: storageProvider || 's3',
+    });
+
+    debugLog('Session refreshed successfully, expires in:', expiresIn);
+
+    return true;
+  } catch (error) {
+    debugLog('Session refresh failed:', error);
+
+    throw new Error(
+      `Failed to refresh session: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+};
+
+/**
+ * Check if session needs refresh and refresh if necessary.
+ * Returns true if session is valid (either was valid or successfully refreshed).
+ * @returns {Promise<boolean>} True if session is valid after check.
+ */
+export const ensureValidSession = async () => {
+  // Session is valid and not expiring soon
+  if (isSessionValid() && !isSessionExpiringSoon()) {
+    return true;
+  }
+
+  debugLog('Session expired or expiring soon, attempting refresh...');
+
+  // Try to refresh
+  return refreshSession();
 };

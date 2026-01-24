@@ -7,8 +7,9 @@
 import { get } from 'svelte/store';
 import { parse as parseYAML } from 'yaml';
 
+import { ensureValidSession } from '$lib/services/backends/duckdb/auth';
 import { getConnection } from '$lib/services/backends/duckdb/init';
-import { getPresignedUrl } from '$lib/services/backends/duckdb/credentials';
+import { getPresignedUrl, clearCredentials } from '$lib/services/backends/duckdb/credentials';
 import { repository, getFullStoragePath } from '$lib/services/backends/duckdb/repository';
 import {
   upsertEntry,
@@ -333,12 +334,14 @@ async function processAssetChanges(conn, changes) {
 /**
  * Commit changes to cloud storage.
  * Processes all entry and asset changes, exports to Parquet, and uploads to storage.
+ * Automatically handles session refresh if token is expired or expiring soon.
  * @param {FileChange[]} changes Array of file changes to commit.
  * @param {CommitOptions} options Commit options.
+ * @param {boolean} [isRetry=false] Internal flag to prevent infinite retry loops.
  * @returns {Promise<CommitResults>} Commit results with SHA, date, and file information.
  * @throws {Error} If commit fails at any stage.
  */
-export const commitChanges = async (changes, options) => {
+export const commitChanges = async (changes, options, isRetry = false) => {
   debugLog(`Starting commit with ${changes.length} changes...`);
 
   // eslint-disable-next-line no-console
@@ -353,6 +356,15 @@ export const commitChanges = async (changes, options) => {
   console.log('[DuckDB:Commits] First change keys:', changes[0] ? Object.keys(changes[0]) : 'no changes');
 
   try {
+    // Ensure session is valid before starting commit
+    debugLog('Checking session validity before commit...');
+    const sessionValid = await ensureValidSession();
+
+    if (!sessionValid) {
+      throw new Error('Session expired and user cancelled re-authentication. Please sign in again to save changes.');
+    }
+
+    debugLog('Session is valid, proceeding with commit...');
     // Get database connection
     const conn = await getConnection();
 
@@ -421,8 +433,34 @@ export const commitChanges = async (changes, options) => {
   } catch (error) {
     debugLog('Commit failed:', error);
 
+    // Check if this is an authentication error (401/403) and we haven't retried yet
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const isAuthError = errorMessage.includes('401') ||
+                        errorMessage.includes('403') ||
+                        errorMessage.includes('Unauthorized') ||
+                        errorMessage.includes('Authentication failed');
+
+    if (isAuthError && !isRetry) {
+      debugLog('Authentication error detected, attempting session refresh and retry...');
+
+      // Clear credentials to force re-authentication
+      clearCredentials();
+
+      // Try to refresh session
+      const refreshed = await ensureValidSession();
+
+      if (refreshed) {
+        debugLog('Session refreshed, retrying commit...');
+
+        // Retry the commit with isRetry=true to prevent infinite loops
+        return commitChanges(changes, options, true);
+      }
+
+      throw new Error('Session expired and re-authentication failed. Please sign in again to save changes.');
+    }
+
     throw new Error(
-      `Failed to commit changes: ${error instanceof Error ? error.message : String(error)}`,
+      `Failed to commit changes: ${errorMessage}`,
     );
   }
 };

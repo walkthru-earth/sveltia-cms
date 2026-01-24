@@ -48,6 +48,18 @@ const config = {
 let sessionToken = null;
 
 /**
+ * Session expiry timestamp in milliseconds.
+ * @type {number}
+ */
+let sessionExpiresAt = 0;
+
+/**
+ * Buffer time before session expiry to trigger refresh (5 minutes).
+ * @type {number}
+ */
+const SESSION_REFRESH_BUFFER_MS = 5 * 60 * 1000;
+
+/**
  * Cache for presigned GET URLs.
  * @type {PresignedUrlCache}
  */
@@ -84,14 +96,16 @@ export function configureProxy(proxyConfig) {
 /**
  * Set the session token for API authentication.
  * @param {string} token - JWT session token.
+ * @param {number} [expiresIn] - Token expiry time in seconds (default: 4 hours).
  * @throws {Error} If token is empty or invalid.
  */
-export function setSessionToken(token) {
+export function setSessionToken(token, expiresIn = 14400) {
   if (!token || typeof token !== 'string') {
     throw new Error('Valid session token is required');
   }
 
   sessionToken = token;
+  sessionExpiresAt = Date.now() + expiresIn * 1000;
 }
 
 /**
@@ -100,8 +114,49 @@ export function setSessionToken(token) {
  */
 export function clearCredentials() {
   sessionToken = null;
+  sessionExpiresAt = 0;
   cache.urls = {};
   cache.expiry = 0;
+}
+
+/**
+ * Check if the session token is valid (exists and not expired).
+ * @returns {boolean} True if session is valid.
+ */
+export function isSessionValid() {
+  if (!sessionToken) {
+    return false;
+  }
+
+  return Date.now() < sessionExpiresAt;
+}
+
+/**
+ * Check if the session is expiring soon (within buffer time).
+ * Used to proactively refresh before operations.
+ * @returns {boolean} True if session will expire soon.
+ */
+export function isSessionExpiringSoon() {
+  if (!sessionToken) {
+    return true;
+  }
+
+  return Date.now() > sessionExpiresAt - SESSION_REFRESH_BUFFER_MS;
+}
+
+/**
+ * Get the current session state for debugging and UI feedback.
+ * @returns {{ hasToken: boolean; isValid: boolean; expiringSoon: boolean; expiresIn: number }}
+ */
+export function getSessionState() {
+  const now = Date.now();
+
+  return {
+    hasToken: !!sessionToken,
+    isValid: isSessionValid(),
+    expiringSoon: isSessionExpiringSoon(),
+    expiresIn: Math.max(0, Math.floor((sessionExpiresAt - now) / 1000)),
+  };
 }
 
 /**
