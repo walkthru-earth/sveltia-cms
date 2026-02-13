@@ -18,12 +18,14 @@ import { isSingletonCollection } from '$lib/services/contents/collection';
  * I18n structure types.
  * @type {Record<string, I18nFileStructure>}
  * @internal
+ * @todo Remove the legacy `MULTIPLE_FOLDERS_I18N_ROOT` structure prior to the 1.0 release.
  */
 export const I18N_STRUCTURES = {
   SINGLE_FILE: 'single_file',
   MULTIPLE_FILES: 'multiple_files',
   MULTIPLE_FOLDERS: 'multiple_folders',
-  MULTIPLE_FOLDERS_I18N_ROOT: 'multiple_folders_i18n_root',
+  MULTIPLE_FOLDERS_I18N_ROOT: 'multiple_folders_i18n_root', // deprecated
+  MULTIPLE_ROOT_FOLDERS: 'multiple_root_folders', // new name
 };
 
 /**
@@ -56,10 +58,11 @@ export const DEFAULT_I18N_CONFIG = {
     i18nSingleFile: false,
     i18nMultiFile: false,
     i18nMultiFolder: false,
-    i18nRootMultiFolder: false,
+    i18nMultiRootFolder: false,
   },
   canonicalSlug: { ...DEFAULT_CANONICAL_SLUG },
-  omitDefaultLocaleFromFileName: false,
+  omitDefaultLocaleFromFilePath: false,
+  omitDefaultLocaleFromPreviewPath: false,
 };
 
 /**
@@ -130,7 +133,10 @@ export const createStructureMap = (i18nEnabled, structure) => ({
   i18nSingleFile: i18nEnabled && structure === I18N_STRUCTURES.SINGLE_FILE,
   i18nMultiFile: i18nEnabled && structure === I18N_STRUCTURES.MULTIPLE_FILES,
   i18nMultiFolder: i18nEnabled && structure === I18N_STRUCTURES.MULTIPLE_FOLDERS,
-  i18nRootMultiFolder: i18nEnabled && structure === I18N_STRUCTURES.MULTIPLE_FOLDERS_I18N_ROOT,
+  i18nMultiRootFolder:
+    i18nEnabled &&
+    (structure === I18N_STRUCTURES.MULTIPLE_FOLDERS_I18N_ROOT || // deprecated
+      structure === I18N_STRUCTURES.MULTIPLE_ROOT_FOLDERS), // new name
 });
 
 /**
@@ -194,12 +200,18 @@ export const normalizeI18nConfig = (collection, file) => {
     initial_locales: initialLocalesConfig,
     save_all_locales: saveAllLocalesConfig = true,
     canonical_slug: canonicalSlugConfig = { key: undefined, value: undefined },
-    omit_default_locale_from_filename: omitDefaultConfig = false,
+    omit_default_locale_from_filename: omitDefaultConfigLegacy,
+    omit_default_locale_from_file_path: omitDefaultConfig = omitDefaultConfigLegacy ?? false,
+    omit_default_locale_from_preview_path: omitDefaultLocaleFromPreviewPath = false,
   } = config ?? {};
 
   // @todo Remove the option prior to the 1.0 release.
   if (config?.save_all_locales !== undefined) {
     warnDeprecation('save_all_locales');
+  }
+
+  if (omitDefaultConfigLegacy !== undefined) {
+    warnDeprecation('omit_default_locale_from_filename');
   }
 
   const {
@@ -219,9 +231,12 @@ export const normalizeI18nConfig = (collection, file) => {
 
   const initialLocales = determineInitialLocales(initialLocalesConfig, allLocales, defaultLocale);
 
-  const omitDefaultLocaleFromFileName =
-    omitDefaultConfig &&
-    (file ? /\.{{locale}}\.[a-zA-Z0-9]+$/.test(file.file) : structureMap.i18nMultiFile);
+  const omitDefaultLocaleFromFilePath =
+    omitDefaultConfig && (file ? /{{locale}}[./]/.test(file.file) : structureMap.i18nMultiFile);
+
+  if (structure === 'multiple_folders_i18n_root') {
+    warnDeprecation('multiple_folders_i18n_root');
+  }
 
   return {
     i18nEnabled,
@@ -235,6 +250,7 @@ export const normalizeI18nConfig = (collection, file) => {
       key: canonicalSlugKey,
       value: canonicalSlugTemplate,
     },
-    omitDefaultLocaleFromFileName,
+    omitDefaultLocaleFromFilePath,
+    omitDefaultLocaleFromPreviewPath,
   };
 };

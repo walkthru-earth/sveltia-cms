@@ -111,7 +111,8 @@ describe('Test getEntryPathRegEx()', () => {
     initialLocales: ['en', 'fr'],
     defaultLocale: 'en',
     structure: /** @type {'single_file'} */ ('single_file'),
-    omitDefaultLocaleFromFileName: false,
+    omitDefaultLocaleFromFilePath: false,
+    omitDefaultLocaleFromPreviewPath: false,
     canonicalSlug: { key: 'translationKey', value: '{{slug}}' },
   };
 
@@ -122,7 +123,7 @@ describe('Test getEntryPathRegEx()', () => {
         i18nSingleFile: false,
         i18nMultiFile: false,
         i18nMultiFolder: false,
-        i18nRootMultiFolder: false,
+        i18nMultiRootFolder: false,
       },
     };
 
@@ -144,7 +145,7 @@ describe('Test getEntryPathRegEx()', () => {
         i18nSingleFile: false,
         i18nMultiFile: false,
         i18nMultiFolder: false,
-        i18nRootMultiFolder: false,
+        i18nMultiRootFolder: false,
       },
     };
 
@@ -167,7 +168,7 @@ describe('Test getEntryPathRegEx()', () => {
         i18nSingleFile: false,
         i18nMultiFile: false,
         i18nMultiFolder: false,
-        i18nRootMultiFolder: false,
+        i18nMultiRootFolder: false,
       },
     };
 
@@ -192,7 +193,7 @@ describe('Test getEntryPathRegEx()', () => {
         i18nSingleFile: false,
         i18nMultiFile: true,
         i18nMultiFolder: false,
-        i18nRootMultiFolder: false,
+        i18nMultiRootFolder: false,
       },
     };
 
@@ -208,15 +209,15 @@ describe('Test getEntryPathRegEx()', () => {
     expect('content/posts/my-post.fr.md'.match(regex)?.groups?.locale).toBe('fr');
   });
 
-  test('generates regex with omitDefaultLocaleFromFileName', () => {
+  test('generates regex with omitDefaultLocaleFromFilePath', () => {
     const _i18n = {
       ...baseI18nOptions,
-      omitDefaultLocaleFromFileName: true,
+      omitDefaultLocaleFromFilePath: true,
       structureMap: {
         i18nSingleFile: false,
         i18nMultiFile: true,
         i18nMultiFolder: false,
-        i18nRootMultiFolder: false,
+        i18nMultiRootFolder: false,
       },
     };
 
@@ -239,7 +240,7 @@ describe('Test getEntryPathRegEx()', () => {
         i18nSingleFile: false,
         i18nMultiFile: false,
         i18nMultiFolder: true,
-        i18nRootMultiFolder: false,
+        i18nMultiRootFolder: false,
       },
     };
 
@@ -262,7 +263,7 @@ describe('Test getEntryPathRegEx()', () => {
         i18nSingleFile: false,
         i18nMultiFile: false,
         i18nMultiFolder: false,
-        i18nRootMultiFolder: true,
+        i18nMultiRootFolder: true,
       },
     };
 
@@ -285,7 +286,7 @@ describe('Test getEntryPathRegEx()', () => {
         i18nSingleFile: false,
         i18nMultiFile: false,
         i18nMultiFolder: false,
-        i18nRootMultiFolder: false,
+        i18nMultiRootFolder: false,
       },
     };
 
@@ -307,7 +308,7 @@ describe('Test getEntryPathRegEx()', () => {
         i18nSingleFile: false,
         i18nMultiFile: false,
         i18nMultiFolder: false,
-        i18nRootMultiFolder: false,
+        i18nMultiRootFolder: false,
       },
     };
 
@@ -337,7 +338,7 @@ describe('Test getEntryPathRegEx()', () => {
         i18nSingleFile: false,
         i18nMultiFile: false,
         i18nMultiFolder: false,
-        i18nRootMultiFolder: false,
+        i18nMultiRootFolder: false,
       },
     };
 
@@ -365,7 +366,7 @@ describe('Test getEntryPathRegEx()', () => {
         i18nSingleFile: false,
         i18nMultiFile: false,
         i18nMultiFolder: false,
-        i18nRootMultiFolder: false,
+        i18nMultiRootFolder: false,
       },
     };
 
@@ -382,6 +383,64 @@ describe('Test getEntryPathRegEx()', () => {
     expect('app/(pages)/my-article/page.mdx'.match(regex)?.groups?.subPath).toBe('my-article/page');
     // Should not match without brackets in basePath
     expect('app/pages/my-article/page.md'.match(regex)).toBeNull();
+  });
+
+  test('generates regex with omitDefaultLocaleFromFilePath and multi-folder i18n', () => {
+    const _i18n = {
+      ...baseI18nOptions,
+      omitDefaultLocaleFromFilePath: true,
+      structureMap: {
+        i18nSingleFile: false,
+        i18nMultiFile: false,
+        i18nMultiFolder: true,
+        i18nMultiRootFolder: false,
+      },
+    };
+
+    const regex = getEntryPathRegEx({
+      extension: 'md',
+      format: 'frontmatter',
+      basePath: 'content/posts',
+      _i18n,
+    });
+
+    // Locale folder becomes optional, allowing both 'en/...' and '...' patterns
+    expect(regex.source).toBe('^content\\/posts\\/(?:(?<locale>fr)\\/)?(?<subPath>[^/]+?)\\.md$');
+    // Default locale (en) - no folder
+    expect('content/posts/my-post.md'.match(regex)?.groups?.locale).toBeUndefined();
+    expect('content/posts/my-post.md'.match(regex)?.groups?.subPath).toBe('my-post');
+    // Non-default locale (fr) - with folder
+    expect('content/posts/fr/my-post.md'.match(regex)?.groups?.locale).toBe('fr');
+    expect('content/posts/fr/my-post.md'.match(regex)?.groups?.subPath).toBe('my-post');
+  });
+
+  test('generates regex with omitDefaultLocaleFromFilePath and root multi-folder i18n', () => {
+    const _i18n = {
+      ...baseI18nOptions,
+      omitDefaultLocaleFromFilePath: true,
+      structureMap: {
+        i18nSingleFile: false,
+        i18nMultiFile: false,
+        i18nMultiFolder: false,
+        i18nMultiRootFolder: true,
+      },
+    };
+
+    const regex = getEntryPathRegEx({
+      extension: 'md',
+      format: 'frontmatter',
+      basePath: 'content/posts',
+      _i18n,
+    });
+
+    // Root locale folder becomes optional, allowing both 'en/...' and '...' patterns
+    expect(regex.source).toBe('^(?:(?<locale>fr)\\/)?content\\/posts\\/(?<subPath>[^/]+?)\\.md$');
+    // Default locale (en) - no root folder
+    expect('content/posts/my-post.md'.match(regex)?.groups?.locale).toBeUndefined();
+    expect('content/posts/my-post.md'.match(regex)?.groups?.subPath).toBe('my-post');
+    // Non-default locale (fr) - with root folder
+    expect('fr/content/posts/my-post.md'.match(regex)?.groups?.locale).toBe('fr');
+    expect('fr/content/posts/my-post.md'.match(regex)?.groups?.subPath).toBe('my-post');
   });
 });
 
@@ -475,10 +534,11 @@ describe('Test getFileConfig()', () => {
       i18nSingleFile: false,
       i18nMultiFile: false,
       i18nMultiFolder: false,
-      i18nRootMultiFolder: false,
+      i18nMultiRootFolder: false,
     },
     canonicalSlug: { key: 'translationKey', value: '{{slug}}' },
-    omitDefaultLocaleFromFileName: false,
+    omitDefaultLocaleFromFilePath: false,
+    omitDefaultLocaleFromPreviewPath: false,
   };
 
   /** @type {InternalI18nOptions} */
@@ -492,10 +552,11 @@ describe('Test getFileConfig()', () => {
       i18nSingleFile: true,
       i18nMultiFile: false,
       i18nMultiFolder: false,
-      i18nRootMultiFolder: false,
+      i18nMultiRootFolder: false,
     },
     canonicalSlug: { key: 'translationKey', value: '{{slug}}' },
-    omitDefaultLocaleFromFileName: false,
+    omitDefaultLocaleFromFilePath: false,
+    omitDefaultLocaleFromPreviewPath: false,
   };
 
   /** @type {InternalI18nOptions} */
@@ -509,10 +570,11 @@ describe('Test getFileConfig()', () => {
       i18nSingleFile: false,
       i18nMultiFile: true,
       i18nMultiFolder: false,
-      i18nRootMultiFolder: false,
+      i18nMultiRootFolder: false,
     },
     canonicalSlug: { key: 'translationKey', value: '{{slug}}' },
-    omitDefaultLocaleFromFileName: false,
+    omitDefaultLocaleFromFilePath: false,
+    omitDefaultLocaleFromPreviewPath: false,
   };
 
   /** @type {InternalI18nOptions} */
@@ -526,14 +588,15 @@ describe('Test getFileConfig()', () => {
       i18nSingleFile: false,
       i18nMultiFile: false,
       i18nMultiFolder: true,
-      i18nRootMultiFolder: false,
+      i18nMultiRootFolder: false,
     },
     canonicalSlug: { key: 'translationKey', value: '{{slug}}' },
-    omitDefaultLocaleFromFileName: false,
+    omitDefaultLocaleFromFilePath: false,
+    omitDefaultLocaleFromPreviewPath: false,
   };
 
   /** @type {InternalI18nOptions} */
-  const i18nRootMultiFolder = {
+  const i18nMultiRootFolder = {
     i18nEnabled: true,
     allLocales: ['en', 'fr'],
     initialLocales: ['en', 'fr'],
@@ -543,10 +606,11 @@ describe('Test getFileConfig()', () => {
       i18nSingleFile: false,
       i18nMultiFile: false,
       i18nMultiFolder: false,
-      i18nRootMultiFolder: true,
+      i18nMultiRootFolder: true,
     },
     canonicalSlug: { key: 'translationKey', value: '{{slug}}' },
-    omitDefaultLocaleFromFileName: false,
+    omitDefaultLocaleFromFilePath: false,
+    omitDefaultLocaleFromPreviewPath: false,
   };
 
   test('entry collection without i18n', () => {
@@ -947,7 +1011,7 @@ describe('Test getFileConfig()', () => {
         rawCollection: {
           ...rawFolderCollection,
         },
-        _i18n: i18nRootMultiFolder,
+        _i18n: i18nMultiRootFolder,
       }),
     ).toEqual({
       extension: 'md',
@@ -966,7 +1030,7 @@ describe('Test getFileConfig()', () => {
           ...rawFolderCollection,
           path: '{{slug}}/index',
         },
-        _i18n: i18nRootMultiFolder,
+        _i18n: i18nMultiRootFolder,
       }),
     ).toEqual({
       extension: 'md',
@@ -986,7 +1050,7 @@ describe('Test getFileConfig()', () => {
           path: '{{slug}}/index',
           format: 'yaml-frontmatter',
         },
-        _i18n: i18nRootMultiFolder,
+        _i18n: i18nMultiRootFolder,
       }),
     ).toEqual({
       extension: 'md',
@@ -1006,7 +1070,7 @@ describe('Test getFileConfig()', () => {
           extension: 'yml',
           yaml_quote: true,
         },
-        _i18n: i18nRootMultiFolder,
+        _i18n: i18nMultiRootFolder,
       }),
     ).toEqual({
       extension: 'yml',
@@ -1025,7 +1089,7 @@ describe('Test getFileConfig()', () => {
           ...rawFolderCollection,
           extension: 'json',
         },
-        _i18n: i18nRootMultiFolder,
+        _i18n: i18nMultiRootFolder,
       }),
     ).toEqual({
       extension: 'json',

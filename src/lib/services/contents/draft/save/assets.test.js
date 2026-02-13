@@ -53,7 +53,8 @@ describe('Test resolveAssetFolderPaths()', () => {
     initialLocales: ['en'],
     defaultLocale: 'en',
     canonicalSlug: { key: 'translationKey', value: '{{slug}}' },
-    omitDefaultLocaleFromFileName: false,
+    omitDefaultLocaleFromFilePath: false,
+    omitDefaultLocaleFromPreviewPath: false,
   };
 
   /** @type {InternalI18nOptions} */
@@ -64,19 +65,31 @@ describe('Test resolveAssetFolderPaths()', () => {
       i18nSingleFile: false,
       i18nMultiFile: false,
       i18nMultiFolder: true,
-      i18nRootMultiFolder: false,
+      i18nMultiRootFolder: false,
     },
   };
 
   /** @type {InternalI18nOptions} */
-  const i18nRootMultiFolder = {
+  const i18nMultiRootFolder = {
     ...i18nBaseConfig,
     structure: 'multiple_folders_i18n_root',
     structureMap: {
       i18nSingleFile: false,
       i18nMultiFile: false,
       i18nMultiFolder: false,
-      i18nRootMultiFolder: true,
+      i18nMultiRootFolder: true,
+    },
+  };
+
+  /** @type {InternalI18nOptions} */
+  const i18nRootMultiFolders = {
+    ...i18nBaseConfig,
+    structure: 'multiple_root_folders',
+    structureMap: {
+      i18nSingleFile: false,
+      i18nMultiFile: false,
+      i18nMultiFolder: false,
+      i18nMultiRootFolder: true,
     },
   };
 
@@ -88,7 +101,7 @@ describe('Test resolveAssetFolderPaths()', () => {
       i18nSingleFile: false,
       i18nMultiFile: true,
       i18nMultiFolder: false,
-      i18nRootMultiFolder: false,
+      i18nMultiRootFolder: false,
     },
   };
 
@@ -100,7 +113,7 @@ describe('Test resolveAssetFolderPaths()', () => {
       i18nSingleFile: true,
       i18nMultiFile: false,
       i18nMultiFolder: false,
-      i18nRootMultiFolder: false,
+      i18nMultiRootFolder: false,
     },
   };
 
@@ -194,7 +207,28 @@ describe('Test resolveAssetFolderPaths()', () => {
     const collection = {
       ...collectionBase,
       _file: { ..._file, subPath: '{{slug}}' },
-      _i18n: i18nRootMultiFolder,
+      _i18n: i18nMultiRootFolder,
+    };
+
+    await setupAssetFolder(relativeAssetFolder);
+
+    expect(
+      resolveAssetFolderPaths({
+        folder: relativeAssetFolder,
+        fillSlugOptions: { collection, content: {}, currentSlug },
+      }),
+    ).toEqual({
+      resolvedInternalPath: 'src/content/blog/foo/images',
+      resolvedPublicPath: '../foo',
+    });
+  });
+
+  test('simple path, multiple root folders (new), entry relative', async () => {
+    /** @type {InternalCollection} */
+    const collection = {
+      ...collectionBase,
+      _file: { ..._file, subPath: '{{slug}}' },
+      _i18n: i18nRootMultiFolders,
     };
 
     await setupAssetFolder(relativeAssetFolder);
@@ -215,7 +249,28 @@ describe('Test resolveAssetFolderPaths()', () => {
     const collection = {
       ...collectionBase,
       _file: { ..._file, subPath: '{{slug}}/index' },
-      _i18n: i18nRootMultiFolder,
+      _i18n: i18nMultiRootFolder,
+    };
+
+    await setupAssetFolder(relativeAssetFolder);
+
+    expect(
+      resolveAssetFolderPaths({
+        folder: relativeAssetFolder,
+        fillSlugOptions: { collection, content: {}, currentSlug },
+      }),
+    ).toEqual({
+      resolvedInternalPath: 'src/content/blog/foo/images',
+      resolvedPublicPath: '../../foo',
+    });
+  });
+
+  test('nested path, multiple root folders (new), entry relative', async () => {
+    /** @type {InternalCollection} */
+    const collection = {
+      ...collectionBase,
+      _file: { ..._file, subPath: '{{slug}}/index' },
+      _i18n: i18nRootMultiFolders,
     };
 
     await setupAssetFolder(relativeAssetFolder);
@@ -362,7 +417,28 @@ describe('Test resolveAssetFolderPaths()', () => {
     const collection = {
       ...collectionBase,
       _file: { ..._file, subPath: '{{slug}}' },
-      _i18n: i18nRootMultiFolder,
+      _i18n: i18nMultiRootFolder,
+    };
+
+    await setupAssetFolder(absoluteAssetFolder);
+
+    expect(
+      resolveAssetFolderPaths({
+        folder: absoluteAssetFolder,
+        fillSlugOptions: { collection, content: {}, currentSlug },
+      }),
+    ).toEqual({
+      resolvedInternalPath: 'static/uploads/blog',
+      resolvedPublicPath: '/uploads/blog',
+    });
+  });
+
+  test('simple path, multiple root folders (new), entry absolute', async () => {
+    /** @type {InternalCollection} */
+    const collection = {
+      ...collectionBase,
+      _file: { ..._file, subPath: '{{slug}}' },
+      _i18n: i18nRootMultiFolders,
     };
 
     await setupAssetFolder(absoluteAssetFolder);
@@ -383,7 +459,28 @@ describe('Test resolveAssetFolderPaths()', () => {
     const collection = {
       ...collectionBase,
       _file: { ..._file, subPath: '{{slug}}/index' },
-      _i18n: i18nRootMultiFolder,
+      _i18n: i18nMultiRootFolder,
+    };
+
+    await setupAssetFolder(absoluteAssetFolder);
+
+    expect(
+      resolveAssetFolderPaths({
+        folder: absoluteAssetFolder,
+        fillSlugOptions: { collection, content: {}, currentSlug },
+      }),
+    ).toEqual({
+      resolvedInternalPath: 'static/uploads/blog',
+      resolvedPublicPath: '/uploads/blog',
+    });
+  });
+
+  test('nested path, multiple root folders (new), entry absolute', async () => {
+    /** @type {InternalCollection} */
+    const collection = {
+      ...collectionBase,
+      _file: { ..._file, subPath: '{{slug}}/index' },
+      _i18n: i18nRootMultiFolders,
     };
 
     await setupAssetFolder(absoluteAssetFolder);
@@ -1449,12 +1546,13 @@ describe('Test replaceBlobURL()', () => {
         allLocales: ['en'],
         initialLocales: ['en'],
         canonicalSlug: { key: '', value: '' },
-        omitDefaultLocaleFromFileName: false,
+        omitDefaultLocaleFromFilePath: false,
+        omitDefaultLocaleFromPreviewPath: false,
         structureMap: {
           i18nSingleFile: true,
           i18nMultiFile: false,
           i18nMultiFolder: false,
-          i18nRootMultiFolder: false,
+          i18nMultiRootFolder: false,
         },
       },
       _file: {

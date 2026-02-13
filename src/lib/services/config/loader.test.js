@@ -3,7 +3,44 @@
 
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
-import { fetchCmsConfig, fetchFile, getConfigPath } from './loader';
+import { fetchCmsConfig, fetchFile, getConfigPath, verifyLinksAreSecure } from './loader';
+
+vi.mock('svelte-i18n', () => ({
+  _: {
+    subscribe: vi.fn((callback) => {
+      callback((key, options) => {
+        // Return a predictable string based on the key
+        if (key === 'config.error.fetch_failed_with_manual_init') {
+          return 'Fetch failed (manual init)';
+        }
+
+        if (key === 'config.error.fetch_failed') {
+          return 'Fetch failed';
+        }
+
+        if (key === 'config.error.fetch_failed_not_ok') {
+          return `Fetch failed with status ${options?.values?.status || '???'}`;
+        }
+
+        if (key === 'config.error.parse_failed') {
+          return 'Parse failed';
+        }
+
+        if (key === 'config.error.parse_failed_unsupported_type') {
+          return 'Unsupported type';
+        }
+
+        if (key === 'config.error.parse_failed_invalid_object') {
+          return 'Invalid object';
+        }
+
+        return key;
+      });
+
+      return () => {};
+    }),
+  },
+}));
 
 // Mock dependencies
 global.fetch = vi.fn();
@@ -13,6 +50,7 @@ global.document = {
 global.window = {
   location: {
     pathname: '/admin/',
+    origin: 'https://example.com',
   },
 };
 
@@ -48,6 +86,112 @@ describe('config/loader', () => {
       expect(getConfigPath('')).toBe('/config.yml');
       expect(getConfigPath('/admin/file.name.ext')).toBe('/admin/config.yml');
       expect(getConfigPath('/admin/no-extension')).toBe('/admin/no-extension/config.yml');
+    });
+  });
+
+  describe('verifyLinksAreSecure', () => {
+    beforeEach(() => {
+      global.window = {
+        location: {
+          pathname: '/admin/',
+          origin: 'https://example.com',
+        },
+      };
+    });
+
+    test('should return true for HTTPS URLs', () => {
+      const links = [
+        { href: 'https://example.com/config.yml' },
+        { href: 'https://cdn.example.com/config.json' },
+      ];
+
+      expect(verifyLinksAreSecure(links)).toBe(true);
+    });
+
+    test('should return true for localhost URLs', () => {
+      const links = [
+        { href: 'http://localhost/config.yml' },
+        { href: 'http://localhost:3000/config.json' },
+      ];
+
+      expect(verifyLinksAreSecure(links)).toBe(true);
+    });
+
+    test('should return true for 127.0.0.1 URLs', () => {
+      const links = [
+        { href: 'http://127.0.0.1/config.yml' },
+        { href: 'http://127.0.0.1:8080/config' },
+      ];
+
+      expect(verifyLinksAreSecure(links)).toBe(true);
+    });
+
+    test('should return false for HTTP URLs with non-loopback domains', () => {
+      const links = [{ href: 'http://example.com/config.yml' }];
+
+      expect(verifyLinksAreSecure(links)).toBe(false);
+    });
+
+    test('should return false for mixed secure and insecure URLs', () => {
+      const links = [
+        { href: 'https://example.com/config.yml' },
+        { href: 'http://example.com/config.json' },
+      ];
+
+      expect(verifyLinksAreSecure(links)).toBe(false);
+    });
+
+    test('should return true for empty array', () => {
+      expect(verifyLinksAreSecure([])).toBe(true);
+    });
+
+    test('should return true for relative URLs that resolve to HTTPS', () => {
+      global.window.location.origin = 'https://example.com';
+
+      const links = [{ href: 'relative/path/config.yml' }];
+
+      expect(verifyLinksAreSecure(links)).toBe(true);
+    });
+
+    test('should return true for relative HTTPS URLs from secure origin', () => {
+      global.window.location.origin = 'https://secure.example.com';
+
+      const links = [{ href: '/config.yml' }, { href: './config/base.yml' }];
+
+      expect(verifyLinksAreSecure(links)).toBe(true);
+    });
+
+    test('should return true for relative URLs from localhost origin', () => {
+      global.window.location.origin = 'http://localhost:3000';
+
+      const links = [{ href: '/config.yml' }];
+
+      expect(verifyLinksAreSecure(links)).toBe(true);
+    });
+
+    test('should return false for relative URLs from insecure HTTP origin', () => {
+      global.window.location.origin = 'http://insecure-domain.com';
+
+      const links = [{ href: '/config.yml' }];
+
+      expect(verifyLinksAreSecure(links)).toBe(false);
+    });
+
+    test('should handle multiple links with mixed types', () => {
+      const links = [
+        { href: 'https://example.com/config.yml', type: 'application/yaml' },
+        { href: 'http://localhost:3000/config.json', type: 'application/json' },
+      ];
+
+      expect(verifyLinksAreSecure(links)).toBe(true);
+    });
+
+    test('should return true for HTTP links from HTTP origin when host is localhost', () => {
+      global.window.location.origin = 'http://localhost:8080';
+
+      const links = [{ href: 'http://localhost:8080/config.yml' }];
+
+      expect(verifyLinksAreSecure(links)).toBe(true);
     });
   });
 
@@ -241,6 +385,32 @@ backend:
       expect(result.backend.media_folder).toBe('static/images');
       expect(result.backend.name).toBe('github');
     });
+
+    test('should use correct error message when manualInit is false', async () => {
+      document.querySelectorAll.mockReturnValue([]);
+
+      fetch.mockRejectedValue(new Error('Network error'));
+
+      try {
+        await fetchCmsConfig({ manualInit: false });
+        expect.fail('Should have thrown an error');
+      } catch (error) {
+        expect(error.message).toBe('Fetch failed');
+      }
+    });
+
+    test('should use correct error message when manualInit is true', async () => {
+      document.querySelectorAll.mockReturnValue([]);
+
+      fetch.mockRejectedValue(new Error('Network error'));
+
+      try {
+        await fetchCmsConfig({ manualInit: true });
+        expect.fail('Should have thrown an error');
+      } catch (error) {
+        expect(error.message).toBe('Fetch failed (manual init)');
+      }
+    });
   });
 
   describe('fetchFile', () => {
@@ -430,6 +600,69 @@ collections:
           },
         ],
       });
+    });
+
+    test('should use correct error message when manualInit is false and fetch fails', async () => {
+      fetch.mockRejectedValue(new Error('Network error'));
+
+      try {
+        await fetchFile({ href: '/config.yml' }, { manualInit: false });
+        expect.fail('Should have thrown an error');
+      } catch (error) {
+        expect(error.message).toBe('Fetch failed');
+      }
+    });
+
+    test('should use correct error message when manualInit is true and fetch fails', async () => {
+      fetch.mockRejectedValue(new Error('Network error'));
+
+      try {
+        await fetchFile({ href: '/config.yml' }, { manualInit: true });
+        expect.fail('Should have thrown an error');
+      } catch (error) {
+        expect(error.message).toBe('Fetch failed (manual init)');
+      }
+    });
+
+    test('should pass manualInit option to fetchFile when called from fetchCmsConfig', async () => {
+      document.querySelectorAll.mockReturnValue([]);
+
+      fetch.mockRejectedValue(new Error('Network error'));
+
+      try {
+        await fetchCmsConfig({ manualInit: true });
+        expect.fail('Should have thrown an error');
+      } catch (error) {
+        expect(error.message).toBe('Fetch failed (manual init)');
+      }
+    });
+
+    test('should use correct error message when manualInit is false and response is not ok', async () => {
+      fetch.mockResolvedValue({
+        ok: false,
+        status: 404,
+      });
+
+      try {
+        await fetchFile({ href: '/config.yml' }, { manualInit: false });
+        expect.fail('Should have thrown an error');
+      } catch (error) {
+        expect(error.message).toBe('Fetch failed');
+      }
+    });
+
+    test('should use correct error message when manualInit is true and response is not ok', async () => {
+      fetch.mockResolvedValue({
+        ok: false,
+        status: 404,
+      });
+
+      try {
+        await fetchFile({ href: '/config.yml' }, { manualInit: true });
+        expect.fail('Should have thrown an error');
+      } catch (error) {
+        expect(error.message).toBe('Fetch failed (manual init)');
+      }
     });
   });
 });

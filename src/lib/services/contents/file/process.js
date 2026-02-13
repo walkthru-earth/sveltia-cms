@@ -6,7 +6,7 @@ import { flatten } from 'flat';
 import { getCollection } from '$lib/services/contents/collection';
 import { getCollectionFile } from '$lib/services/contents/collection/files';
 import { getIndexFile } from '$lib/services/contents/collection/index-file';
-import { hasRootListField } from '$lib/services/contents/fields/list/helper';
+import { hasRootField } from '$lib/services/contents/entry/fields';
 import { parseEntryFile } from '$lib/services/contents/file/parse';
 
 /**
@@ -109,32 +109,58 @@ export const parseFileContent = async (file, errors) => {
 };
 
 /**
- * Transform raw content to handle special cases like root list fields.
+ * Transform root field content.
+ * @param {object} args Arguments.
+ * @param {RawEntryContent} args.rawContent Raw content from the file.
+ * @param {Field[]} args.fields Collection fields.
+ * @param {boolean} args.i18nSingleFile Whether i18n single file structure is used.
+ * @param {(value: any) => boolean} args.validate Function to validate content items.
+ * @returns {RawEntryContent | undefined} Transformed content.
+ */
+export const transformRoot = ({ rawContent, fields, i18nSingleFile, validate }) => {
+  const fieldName = fields[0].name;
+
+  if (i18nSingleFile) {
+    if (!isObject(rawContent) || !Object.values(rawContent).every(validate)) {
+      return undefined;
+    }
+
+    return Object.fromEntries(
+      Object.entries(rawContent).map(([locale, content]) => [locale, { [fieldName]: content }]),
+    );
+  }
+
+  if (!validate(rawContent)) {
+    return undefined;
+  }
+
+  return { [fieldName]: rawContent };
+};
+
+/**
+ * Transform raw content to handle special cases like root List and root KeyValue fields.
  * @param {RawEntryContent} rawContent Raw content from the file.
  * @param {Field[]} fields Collection fields.
  * @param {boolean} i18nSingleFile Whether i18n single file structure is used.
  * @returns {RawEntryContent | undefined} Transformed content or undefined if invalid.
  */
 export const transformRawContent = (rawContent, fields, i18nSingleFile) => {
-  // Handle a special case: top-level list field
-  if (hasRootListField(fields)) {
-    const fieldName = fields[0].name;
+  const args = { rawContent, fields, i18nSingleFile };
 
-    if (i18nSingleFile) {
-      if (!isObject(rawContent) || !Object.values(rawContent).every(Array.isArray)) {
-        return undefined;
-      }
+  // Handle a special case: top-level List field
+  if (hasRootField(fields, 'list')) {
+    return transformRoot({ ...args, validate: Array.isArray });
+  }
 
-      return Object.fromEntries(
-        Object.entries(rawContent).map(([locale, content]) => [locale, { [fieldName]: content }]),
-      );
-    }
-
-    if (!Array.isArray(rawContent)) {
-      return undefined;
-    }
-
-    return { [fieldName]: rawContent };
+  // Handle a special case: top-level KeyValue field
+  if (hasRootField(fields, 'keyvalue')) {
+    return transformRoot({
+      ...args,
+      // Check if the key-value pairs are in an object format and each value is a string
+      // eslint-disable-next-line jsdoc/require-jsdoc
+      validate: (value) =>
+        isObject(value) && Object.values(value).every((val) => typeof val === 'string'),
+    });
   }
 
   return isObject(rawContent) ? rawContent : undefined;
@@ -213,7 +239,7 @@ export const extractPathInfo = (
     return { subPath: undefined, locale: undefined };
   }
 
-  // If the `omit_default_locale_from_filename` i18n option is enabled, the matching comes with
+  // If the `omit_default_locale_from_file_path` i18n option is enabled, the matching comes with
   // the `locale` group being `undefined` for the default locale, so we need a fallback for it
   const match = path.match(fullPathRegEx);
 
@@ -377,7 +403,7 @@ export const prepareEntry = async ({ file, entries, errors }) => {
       i18nEnabled,
       allLocales,
       defaultLocale,
-      structureMap: { i18nSingleFile, i18nMultiFile, i18nMultiFolder, i18nRootMultiFolder },
+      structureMap: { i18nSingleFile, i18nMultiFile, i18nMultiFolder, i18nMultiRootFolder },
       canonicalSlug: { key: canonicalSlugKey },
     },
   } = collectionFile ?? /** @type {InternalEntryCollection} */ (collection);
@@ -392,7 +418,7 @@ export const prepareEntry = async ({ file, entries, errors }) => {
     return;
   }
 
-  const isMultiFileStructure = i18nMultiFile || i18nMultiFolder || i18nRootMultiFolder;
+  const isMultiFileStructure = i18nMultiFile || i18nMultiFolder || i18nMultiRootFolder;
 
   const { subPath, locale } = extractPathInfo(
     file,

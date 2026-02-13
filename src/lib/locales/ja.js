@@ -644,8 +644,14 @@ export const strings = {
     },
     error: {
       no_secure_context: 'Sveltia CMS は HTTPS またはローカルホスト URL でのみ動作します。',
+      insecure_url:
+        '設定ファイルの URL は HTTPS プロトコルまたはローカルホストアドレスを使用する必要があります。',
+      insecure_urls:
+        '設定ファイルの URL は HTTPS プロトコルまたはローカルホストアドレスを使用する必要があります。',
       fetch_failed: '設定ファイルを読み込めませんでした。',
       fetch_failed_not_ok: 'HTTP レスポンスがステータス {status} で返されました。',
+      fetch_failed_with_manual_init:
+        '設定ファイルを取得できませんでした。`config.yml` ファイルの読み込みを防ぐには、`CMS.init()` に渡される設定オブジェクトに [`load_config_file: false`](https://sveltiacms.app/en/docs/api/initialization#providing-a-full-configuration) を追加してください。',
       parse_failed: '設定ファイルを解析できませんでした。',
       parse_failed_invalid_object: '設定ファイルが有効な JavaScript オブジェクトではありません。',
       parse_failed_unsupported_type:
@@ -654,9 +660,9 @@ export const strings = {
       missing_backend: 'バックエンドが定義されていません。',
       missing_backend_name: 'バックエンド名が定義されていません。',
       unsupported_known_backend:
-        '{name} バックエンドは Sveltia CMS では [非対応です](https://sveltiacms.app/en/docs/migration/netlify-decap-cms#compatibility)。',
+        '{name} バックエンドは Sveltia CMS では [非対応です](https://sveltiacms.app/en/docs/migration/netlify-decap-cms#features-not-to-be-implemented)。',
       unsupported_custom_backend:
-        'カスタムバックエンドは Sveltia CMS では [非対応です](https://sveltiacms.app/en/docs/migration/netlify-decap-cms#compatibility)。',
+        'カスタムバックエンドは Sveltia CMS では [非対応です](https://sveltiacms.app/en/docs/migration/netlify-decap-cms#features-not-to-be-implemented)。',
       unsupported_backend_suggestion:
         '[サポートされているバックエンド](https://sveltiacms.app/en/docs/backends#supported-backends) のいずれかを使用してください。',
       missing_repository: 'レポジトリが定義されていません。',
@@ -664,6 +670,8 @@ export const strings = {
         '設定されているレポジトリが正しくありません。この設定は「owner/repo」形式でなければなりません。',
       oauth_implicit_flow:
         '設定されている認証方式 (暗黙的フロー) は Sveltia CMS では非対応です。代わりに PKCE 認証を使用してください。',
+      github_pkce_unsupported:
+        'GitHub の制約により、Sveltia CMS ではまだ GitHub での PKCE 認証がサポートされていません。',
       oauth_no_app_id: ' OAuth アプリケーション ID が定義されていません。',
       missing_media_folder: 'メディアフォルダーが定義されていません。',
       invalid_media_folder:
@@ -737,6 +745,8 @@ export const strings = {
       unsupported_ignored_option:
         '`{prop}` オプションは Sveltia CMS ではサポートされていません。このオプションは無視されます。',
     },
+    compatibility_link:
+      '詳しくは互換性情報をご覧ください: https://sveltiacms.app/en/docs/migration/netlify-decap-cms#features-not-to-be-implemented',
   },
 
   // Backends

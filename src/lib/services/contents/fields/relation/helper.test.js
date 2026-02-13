@@ -242,10 +242,11 @@ describe('Test getOptions()', async () => {
         i18nSingleFile: true,
         i18nMultiFile: false,
         i18nMultiFolder: false,
-        i18nRootMultiFolder: false,
+        i18nMultiRootFolder: false,
       },
       canonicalSlug: { key: 'translationKey', value: '{{slug}}' },
-      omitDefaultLocaleFromFileName: false,
+      omitDefaultLocaleFromFilePath: false,
+      omitDefaultLocaleFromPreviewPath: false,
     },
     _file: {
       format: 'yaml-frontmatter',
@@ -835,10 +836,11 @@ describe('Test getOptions()', async () => {
             i18nSingleFile: true,
             i18nMultiFile: false,
             i18nMultiFolder: false,
-            i18nRootMultiFolder: false,
+            i18nMultiRootFolder: false,
           },
           canonicalSlug: { key: 'translationKey', value: '{{slug}}' },
-          omitDefaultLocaleFromFileName: false,
+          omitDefaultLocaleFromFilePath: false,
+          omitDefaultLocaleFromPreviewPath: false,
         },
       };
 
@@ -1067,10 +1069,11 @@ describe('Test getOptions()', async () => {
             i18nSingleFile: true,
             i18nMultiFile: false,
             i18nMultiFolder: false,
-            i18nRootMultiFolder: false,
+            i18nMultiRootFolder: false,
           },
           canonicalSlug: { key: 'translationKey', value: '{{slug}}' },
-          omitDefaultLocaleFromFileName: false,
+          omitDefaultLocaleFromFilePath: false,
+          omitDefaultLocaleFromPreviewPath: false,
         },
       };
 

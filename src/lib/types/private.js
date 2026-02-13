@@ -368,8 +368,8 @@
  * and the value is the corresponding file path. File/singleton collection only.
  * @property {string} [folderPath] Folder path. Entry collection only.
  * @property {Record<InternalLocaleCode, string>} [folderPathMap] Folder path map. Entry collection
- * only. Paths in `folderPathMap` are prefixed with a locale if the `multiple_folders_i18n_root`
- * i18n structure is used, while `folderPath` is a bare collection `folder` path.
+ * only. Paths in `folderPathMap` are prefixed with a locale if the `multiple_root_folders` i18n
+ * structure is used, while `folderPath` is a bare collection `folder` path.
  */
 
 /**
@@ -433,8 +433,8 @@
  * @property {boolean} i18nSingleFile Whether the i18n structure is a single file.
  * @property {boolean} i18nMultiFile Whether the i18n structure is multiple files.
  * @property {boolean} i18nMultiFolder Whether the i18n structure is multiple folders.
- * @property {boolean} i18nRootMultiFolder Whether the i18n structure is multiple folders with the
- * locale in the root.
+ * @property {boolean} i18nMultiRootFolder Whether the i18n structure is multiple folders with the
+ * locale under the repository root.
  */
 
 /**
@@ -452,8 +452,10 @@
  * @property {I18nFileStructure} structure File structure.
  * @property {I18nFileStructureMap} structureMap I18n structure map.
  * @property {{ key: string, value: string }} canonicalSlug See `canonical_slug` above.
- * @property {boolean} omitDefaultLocaleFromFileName Whether to exclude the default locale from
- * entry filenames.
+ * @property {boolean} omitDefaultLocaleFromFilePath Whether to exclude the default locale from
+ * entry file paths.
+ * @property {boolean} omitDefaultLocaleFromPreviewPath Whether to exclude the default locale from
+ * preview URL paths.
  */
 
 /**

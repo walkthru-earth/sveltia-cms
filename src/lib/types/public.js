@@ -481,6 +481,11 @@
  * @property {Record<string, string>} [default] Default key-value pairs.
  * @property {string} [key_label] Label for the key column. Default: Key.
  * @property {string} [value_label] Label for the value column. Default: Value.
+ * @property {boolean} [root] Whether to save the field value at the top-level of the data file
+ * without the field name. If the `single_file` i18n structure is enabled, the key-value pairs will
+ * still be saved under locale keys. Default: `false`. See the
+ * [documentation](https://sveltiacms.app/en/docs/fields/keyvalue#top-level-key-value-pairs) for
+ * details.
  * @see https://staticjscms.netlify.app/docs/widget-keyvalue
  * @see https://sveltiacms.app/en/docs/fields/keyvalue
  */
@@ -921,8 +926,8 @@
 
 /**
  * Internationalization (i18n) file structure type.
- * @typedef {'single_file' | 'multiple_files' | 'multiple_folders' |
- * 'multiple_folders_i18n_root'} I18nFileStructure
+ * @typedef {'single_file' | 'multiple_files' | 'multiple_folders' | 'multiple_folders_i18n_root' |
+ * 'multiple_root_folders'} I18nFileStructure
  * @see https://decapcms.org/docs/i18n/
  * @see https://sveltiacms.app/en/docs/i18n
  * @see https://github.com/decaporg/decap-cms/pull/7400
@@ -933,7 +938,8 @@
  * [documentation](https://sveltiacms.app/en/docs/i18n) for details.
  * @typedef {object} I18nOptions
  * @property {I18nFileStructure} structure File structure for entry collections. File/singleton
- * collection must define the structure using `{{locale}}` in the `file` option. See the
+ * collection must define the structure using `{{locale}}` in the `file` option.
+ * `multiple_folders_i18n_root` has been deprecated in favor of `multiple_root_folders`. See the
  * [documentation](https://sveltiacms.app/en/docs/i18n#managing-content-structure) for details.
  * @property {LocaleCode[]} locales List of all available locales.
  * @property {LocaleCode} [default_locale] Default locale. Default: first locale in the `locales`
@@ -958,6 +964,14 @@
  * `multiple_files` i18n structure enabled, as well as to file/singleton collection items with the
  * `file` path ending with `.{{locale}}.<extension>`, aiming to support [Zola’s multilingual
  * sites](https://www.getzola.org/documentation/content/multilingual/).
+ * DEPRECATED: Use the `omit_default_locale_from_file_path` option instead.
+ * @property {boolean} [omit_default_locale_from_file_path] Whether to exclude the default locale
+ * from entry file paths. Default: `false`. This option applies to both entry collections and file
+ * collections, where the path includes a `{{locale}}.` or  `{{locale}}/` placeholder. It aims to
+ * support [Zola’s multilingual sites](https://www.getzola.org/documentation/content/multilingual/).
+ * @property {boolean} [omit_default_locale_from_preview_path] Whether to exclude the default locale
+ * from preview URL paths. Default: `false`. This option helps to create cleaner URLs for the
+ * default locale when generating preview links for multilingual content.
  * @see https://decapcms.org/docs/i18n/
  * @see https://sveltiacms.app/en/docs/i18n
  * @see https://github.com/decaporg/decap-cms/issues/6932
@@ -1173,7 +1187,7 @@
  * overrides the global `public_folder` option. Default: `media_folder` option value.
  * @property {boolean} [hide] Whether to hide the collection in the UI. Default: `false`.
  * @property {boolean} [publish] Whether to show the publishing control UI for Editorial Workflow.
- * Default: `true`.
+ * Default: `true`. Note that Editorial Workflow is not yet supported in Sveltia CMS.
  * @property {FileFormat} [format] File format. It should match the file extension. Default:
  * `yaml-frontmatter`.
  * @property {string | string[]} [frontmatter_delimiter] Delimiters to be used for the front matter
@@ -1226,8 +1240,10 @@
  * [documentation](https://sveltiacms.app/en/docs/collections/entries#sorting) for details.
  * @property {ViewFilter[] | ViewFilters} [view_filters] View filters to be used in the entry list.
  * @property {ViewGroup[] | ViewGroups} [view_groups] View groups to be used in the entry list.
- * @property {NestedCollectionOptions} [nested] Options for a nested collection.
- * @property {CollectionMetaData} [meta] Meta data for a nested collection.
+ * @property {NestedCollectionOptions} [nested] Options for a nested collection. Note that nested
+ * collections are not yet supported in Sveltia CMS.
+ * @property {CollectionMetaData} [meta] Meta data for a nested collection. Note that nested
+ * collections are not yet supported in Sveltia CMS.
  * @property {CollectionIndexFile | boolean} [index_file] Index file inclusion options. If `true`,
  * the default index file name is `_index`, which is used for Hugo’s special index file. See the
  * [documentation](https://sveltiacms.app/en/docs/collections/entries#managing-hugo-s-special-index-file)
@@ -1328,16 +1344,17 @@
  * @property {string} [base_url] OAuth base URL origin. Required when using an OAuth client other
  * than Netlify, including [Sveltia CMS Authenticator](https://github.com/sveltia/sveltia-cms-auth).
  * Default: `https://api.netlify.com`.
- * @property {'' | 'pkce'} [auth_type] OAuth grant type. The default is an empty string, which is
+ * @property {''} [auth_type] OAuth grant type. The default is an empty string, which is
  * authorization code grant. `pkce` is not yet supported.
  * @property {string} [auth_endpoint] OAuth base URL path. Default: `auth`.
  * @property {string} [app_id] OAuth application ID. Required when using PKCE authorization.
  * @property {string} [cms_label_prefix] Pull request label prefix for Editorial Workflow. Default:
- * `sveltia-cms/`.
+ * `sveltia-cms/`. Note that Editorial Workflow is not yet supported in Sveltia CMS.
  * @property {boolean} [squash_merges] Whether to use squash marge for Editorial Workflow. Default:
- * `false`.
+ * `false`. Note that Editorial Workflow is not yet supported in Sveltia CMS.
  * @property {string} [preview_context] Deploy preview link context.
- * @property {boolean} [open_authoring] Whether to use Open Authoring. Default: `false`.
+ * @property {boolean} [open_authoring] Whether to use Open Authoring. Default: `false`. Note that
+ * Open Authoring is not yet supported in Sveltia CMS.
  * @property {'repo' | 'public_repo'} [auth_scope] Authentication scope for Open Authoring.
  * @see https://decapcms.org/docs/github-backend/
  * @see https://decapcms.org/docs/editorial-workflows/
@@ -1371,9 +1388,9 @@
  * @property {string} [auth_endpoint] OAuth base URL path. Default: `oauth/authorize`.
  * @property {string} [app_id] OAuth application ID. Required when using PKCE authorization.
  * @property {string} [cms_label_prefix] Pull request label prefix for Editorial Workflow. Default:
- * `sveltia-cms/`.
+ * `sveltia-cms/`. Note that Editorial Workflow is not yet supported in Sveltia CMS.
  * @property {boolean} [squash_merges] Whether to use squash marge for Editorial Workflow. Default:
- * `false`.
+ * `false`. Note that Editorial Workflow is not yet supported in Sveltia CMS.
  * @see https://decapcms.org/docs/gitlab-backend/
  * @see https://decapcms.org/docs/editorial-workflows/
  * @see https://sveltiacms.app/en/docs/backends/gitlab
@@ -1497,7 +1514,8 @@
  * only in the `CMS.init()` method’s `config` option. Default: `true`.
  * @property {Backend} backend Backend options.
  * @property {'' | 'simple' | 'editorial_workflow'} [publish_mode] Publish mode. An empty string is
- * the same as `simple`. Default: `simple`.
+ * the same as `simple`. Default: `simple`. Note that Editorial Workflow is not yet supported in
+ * Sveltia CMS.
  * @property {string} [media_folder] Global internal media folder path, relative to the project’s
  * root directory. Required unless a cloud media storage is configured.
  * @property {string} [public_folder] Global public media folder path, relative to the project’s

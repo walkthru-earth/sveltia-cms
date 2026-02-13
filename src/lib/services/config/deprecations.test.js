@@ -11,6 +11,8 @@ describe('Test warnedOnceMap', () => {
       uuid_read_only: false,
       save_all_locales: false,
       automatic_deployments: false,
+      multiple_folders_i18n_root: false,
+      omit_default_locale_from_filename: false,
     });
   });
 
@@ -29,6 +31,7 @@ describe('Test warningMessages', () => {
     expect(warningMessages).toHaveProperty('uuid_read_only');
     expect(warningMessages).toHaveProperty('save_all_locales');
     expect(warningMessages).toHaveProperty('automatic_deployments');
+    expect(warningMessages).toHaveProperty('multiple_folders_i18n_root');
   });
 
   test('should have string messages', () => {
@@ -65,6 +68,22 @@ describe('Test warningMessages', () => {
     expect(warningMessages.automatic_deployments).toContain('automatic_deployments');
     expect(warningMessages.automatic_deployments).toContain('skip_ci');
   });
+
+  test('should contain useful information in multiple_folders_i18n_root message', () => {
+    expect(warningMessages.multiple_folders_i18n_root).toContain('multiple_folders_i18n_root');
+    expect(warningMessages.multiple_folders_i18n_root).toContain('deprecated');
+    expect(warningMessages.multiple_folders_i18n_root).toContain('multiple_root_folders');
+  });
+
+  test('should contain useful information in omit_default_locale_from_filename message', () => {
+    expect(warningMessages.omit_default_locale_from_filename).toContain(
+      'omit_default_locale_from_filename',
+    );
+    expect(warningMessages.omit_default_locale_from_filename).toContain('deprecated');
+    expect(warningMessages.omit_default_locale_from_filename).toContain(
+      'omit_default_locale_from_file_path',
+    );
+  });
 });
 
 describe('Test warnDeprecation()', () => {
@@ -98,6 +117,7 @@ describe('Test warnDeprecation()', () => {
     expect(warnedOnceMap.uuid_read_only).toBe(false);
     expect(warnedOnceMap.save_all_locales).toBe(false);
     expect(warnedOnceMap.automatic_deployments).toBe(false);
+    expect(warnedOnceMap.multiple_folders_i18n_root).toBe(false);
   });
 
   test('should handle different keys without errors', () => {
@@ -107,6 +127,7 @@ describe('Test warnDeprecation()', () => {
     expect(() => warnDeprecation('uuid_read_only')).not.toThrow();
     expect(() => warnDeprecation('save_all_locales')).not.toThrow();
     expect(() => warnDeprecation('automatic_deployments')).not.toThrow();
+    expect(() => warnDeprecation('multiple_folders_i18n_root')).not.toThrow();
   });
 
   test('should handle custom message parameter without errors', () => {

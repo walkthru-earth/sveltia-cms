@@ -67,14 +67,14 @@ export const compareFilePath = (a, b) =>
  * @returns {EntryFolderInfo[]} Entry folders.
  */
 export const getEntryCollectionFolders = ({ collections }) =>
-  getValidCollections({ collections, type: 'entry', visible: true })
+  getValidCollections({ collections, type: 'entry' })
     .map((collection) => {
       const { name: collectionName, folder } = /** @type {EntryCollection} */ (collection);
       const folderPath = stripSlashes(/** @type {string} */ (folder));
 
       const {
         allLocales,
-        structureMap: { i18nRootMultiFolder },
+        structureMap: { i18nMultiRootFolder },
       } = normalizeI18nConfig(collection);
 
       return {
@@ -83,7 +83,7 @@ export const getEntryCollectionFolders = ({ collections }) =>
         folderPathMap: Object.fromEntries(
           allLocales.map((locale) => [
             locale,
-            i18nRootMultiFolder ? `${locale}/${folderPath}` : folderPath,
+            i18nMultiRootFolder ? `${locale}/${folderPath}` : folderPath,
           ]),
         ),
       };
@@ -96,7 +96,7 @@ export const getEntryCollectionFolders = ({ collections }) =>
  * @returns {EntryFolderInfo[]} Entry folders.
  */
 export const getFileCollectionFolders = ({ collections }) =>
-  getValidCollections({ collections, type: 'file', visible: true })
+  getValidCollections({ collections, type: 'file' })
     .map((collection) =>
       // prettier-ignore
       (/** @type {FileCollection} */ (collection).files ?? []).map((file) =>

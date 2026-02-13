@@ -140,23 +140,28 @@ export const getEntryPathRegEx = ({
   const {
     allLocales,
     defaultLocale,
-    omitDefaultLocaleFromFileName,
-    structureMap: { i18nMultiFile, i18nMultiFolder, i18nRootMultiFolder },
+    omitDefaultLocaleFromFilePath,
+    structureMap: { i18nMultiFile, i18nMultiFolder, i18nMultiRootFolder },
   } = _i18n;
 
   const localeMatcher = `(?<locale>${allLocales.join('|')})`;
+  const joinedNonDefaultLocales = allLocales.filter((locale) => locale !== defaultLocale).join('|');
+
+  const localeFolderMatcher = omitDefaultLocaleFromFilePath
+    ? `(?:(?<locale>${joinedNonDefaultLocales})\\/)?`
+    : `${localeMatcher}\\/`;
+
+  const localeFileMatcher = omitDefaultLocaleFromFilePath
+    ? `(?:\\.(?<locale>${joinedNonDefaultLocales}))?`
+    : `\\.${localeMatcher}`;
 
   const pattern = [
     '^',
-    i18nRootMultiFolder ? `${localeMatcher}\\/` : '',
+    i18nMultiRootFolder ? localeFolderMatcher : '',
     basePath ? `${escapeRegExp(basePath)}\\/` : '',
-    i18nMultiFolder ? `${localeMatcher}\\/` : '',
+    i18nMultiFolder ? localeFolderMatcher : '',
     getFilePathMatcher(subPath, indexFileName),
-    i18nMultiFile
-      ? omitDefaultLocaleFromFileName
-        ? `(?:\\.(?<locale>${allLocales.filter((locale) => locale !== defaultLocale).join('|')}))?`
-        : `\\.${localeMatcher}`
-      : '',
+    i18nMultiFile ? localeFileMatcher : '',
     '\\.',
     detectFileExtension({ format, extension }),
     '$',

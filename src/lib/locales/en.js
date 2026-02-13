@@ -644,8 +644,12 @@ export const strings = {
     },
     error: {
       no_secure_context: 'Sveltia CMS only works with HTTPS or localhost URLs.',
+      insecure_url: 'The configuration file URL must use HTTPS protocol or a localhost address.',
+      insecure_urls: 'The configuration file URLs must use HTTPS protocol or localhost addresses.',
       fetch_failed: 'The configuration file could not be retrieved.',
       fetch_failed_not_ok: 'HTTP response returned with status {status}.',
+      fetch_failed_with_manual_init:
+        'The configuration file could not be retrieved. To prevent the `config.yml` file from loading, add [`load_config_file: false`](https://sveltiacms.app/en/docs/api/initialization#providing-a-full-configuration) to the configuration object passed to `CMS.init()`.',
       parse_failed: 'The configuration file could not be parsed.',
       parse_failed_invalid_object: 'The configuration file is not a valid JavaScript object.',
       parse_failed_unsupported_type:
@@ -654,9 +658,9 @@ export const strings = {
       missing_backend: 'The backend is not defined.',
       missing_backend_name: 'The backend name is not defined.',
       unsupported_known_backend:
-        'The {name} backend is [not supported](https://sveltiacms.app/en/docs/migration/netlify-decap-cms#compatibility) in Sveltia CMS.',
+        'The {name} backend is [not supported](https://sveltiacms.app/en/docs/migration/netlify-decap-cms#features-not-to-be-implemented) in Sveltia CMS.',
       unsupported_custom_backend:
-        'Custom backends are [not supported](https://sveltiacms.app/en/docs/migration/netlify-decap-cms#compatibility) in Sveltia CMS.',
+        'Custom backends are [not supported](https://sveltiacms.app/en/docs/migration/netlify-decap-cms#features-not-to-be-implemented) in Sveltia CMS.',
       unsupported_backend_suggestion:
         'Use one of the [supported backends](https://sveltiacms.app/en/docs/backends#supported-backends) instead.',
       missing_repository: 'The repository is not defined.',
@@ -664,6 +668,8 @@ export const strings = {
         'The configured repository is invalid. It must be in “owner/repo” format.',
       oauth_implicit_flow:
         'The configured authentication method (implicit flow) is not supported in Sveltia CMS. Use PKCE authorization instead.',
+      github_pkce_unsupported:
+        'PKCE authorization with GitHub is not yet supported in Sveltia CMS due to GitHub’s limitations.',
       oauth_no_app_id: 'OAuth application ID is not defined.',
       missing_media_folder: 'The media folder is not defined.',
       invalid_media_folder: 'The configured media folder is invalid. It must be a string.',
@@ -733,6 +739,8 @@ export const strings = {
       unsupported_ignored_option:
         'The `{prop}` option is not supported in Sveltia CMS. It will be ignored.',
     },
+    compatibility_link:
+      'See the compatibility notes for details: https://sveltiacms.app/en/docs/migration/netlify-decap-cms#features-not-to-be-implemented',
   },
 
   // Backends
